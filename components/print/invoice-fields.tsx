@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheckIcon, SparklesIcon, XIcon } from "lucide-react";
+import { ClockIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useId } from "react";
 
 import { draftWords, type Draft } from "@/components/print/draft";
@@ -30,50 +30,64 @@ export function InvoiceFields({
   draft,
   onChange,
   errors,
-  today,
+  now,
   requireRecipient = true,
 }: {
   draft: Draft;
   onChange: (patch: Partial<Draft>) => void;
   errors?: DraftErrors;
-  today: string;
+  /** Current Kurdistan time, shown while the date is automatic. */
+  now: string;
   requireRecipient?: boolean;
 }) {
   const id = useId();
   const words = draftWords(draft);
+  const hasDate = draft.dateAuto || Boolean(draft.date);
 
   return (
     <FieldGroup className="gap-5">
       <Field>
-        <FieldLabel htmlFor={`${id}-date`}>بەروار</FieldLabel>
+        <div className="flex items-center justify-between gap-2">
+          <FieldLabel htmlFor={`${id}-date`}>بەروار و کات</FieldLabel>
+          {draft.dateAuto && (
+            <Badge variant="secondary" className="gap-1">
+              <ClockIcon className="size-3" />
+              ئێستا
+            </Badge>
+          )}
+        </div>
         <InputGroup>
           <InputGroupInput
             id={`${id}-date`}
-            type="date"
-            value={draft.date}
-            onChange={(event) => onChange({ date: event.target.value })}
+            type="datetime-local"
+            value={draft.dateAuto ? now : draft.date}
+            onChange={(event) => onChange({ date: event.target.value, dateAuto: false })}
           />
           <InputGroupAddon align="inline-end">
-            {draft.date !== today && (
-              <InputGroupButton onClick={() => onChange({ date: today })}>
-                <CalendarCheckIcon />
-                ئەمڕۆ
+            {!draft.dateAuto && (
+              <InputGroupButton onClick={() => onChange({ dateAuto: true, date: "" })}>
+                <ClockIcon />
+                ئێستا
               </InputGroupButton>
             )}
-            {draft.date && (
+            {hasDate && (
               <InputGroupButton
                 size="icon-xs"
                 aria-label="لابردنی بەروار"
                 title="لابردنی بەروار (بۆ نووسین بە دەست)"
-                onClick={() => onChange({ date: "" })}
+                onClick={() => onChange({ date: "", dateAuto: false })}
               >
                 <XIcon />
               </InputGroupButton>
             )}
           </InputGroupAddon>
         </InputGroup>
-        {!draft.date && (
-          <FieldDescription>بەروار بەتاڵ چاپ دەکرێت بۆ ئەوەی بە دەست بنووسرێت.</FieldDescription>
+        {draft.dateAuto ? (
+          <FieldDescription>کاتی چاپکردن خۆکارانە دادەنرێت؛ دەتوانیت بیگۆڕیت.</FieldDescription>
+        ) : (
+          !draft.date && (
+            <FieldDescription>بەروار بەتاڵ چاپ دەکرێت بۆ ئەوەی بە دەست بنووسرێت.</FieldDescription>
+          )
         )}
       </Field>
 

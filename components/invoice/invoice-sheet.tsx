@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- print output needs plain, eagerly loaded images */
 import { COMPANY } from "@/lib/company";
-import { formatMoney, splitIsoDate } from "@/lib/format";
+import { formatMoney, splitLocalDateTime } from "@/lib/format";
 import type { InvoiceContent } from "@/lib/invoice";
 
 /** Long values shrink so they stay on the dotted line. */
@@ -23,13 +23,19 @@ function Row({ label, value }: { label: string; value: string }) {
 function PrintedDate({ date }: { date: string | null }) {
   if (!date) {
     // Blank template, filled in by hand like the paper receipt book.
-    return <span className="inv-date-value is-blank">{"   /    / 20   "}</span>;
+    return (
+      <span className="inv-date-value is-blank">
+        {"\u00a0\u00a0 / \u00a0\u00a0 / 20\u00a0\u00a0\u00a0"}
+        <span className="inv-time">{"\u00a0\u00a0 : \u00a0\u00a0"}</span>
+      </span>
+    );
   }
-  const { day, month, year } = splitIsoDate(date);
-  // Read right-to-left: day / month / year.
+  const { day, month, year, time } = splitLocalDateTime(date);
+  // Read right-to-left: day / month / year, then the time.
   return (
     <span className="inv-date-value" dir="rtl">
       <bdi>{day}</bdi> / <bdi>{month}</bdi> / <bdi>{year}</bdi>
+      <bdi className="inv-time">{time}</bdi>
     </span>
   );
 }

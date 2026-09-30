@@ -49,31 +49,38 @@ export function todayIso(now = new Date()) {
   }).format(now);
 }
 
-/** "2026-09-30" → { day: "30", month: "9", year: "2026" } */
-export function splitIsoDate(iso: string) {
-  const [year, month, day] = iso.split("-");
-  return { day: String(Number(day)), month: String(Number(month)), year };
-}
-
-/** "2026-09-30" → "2026/09/30" */
-export function formatIsoDate(iso: string) {
-  return iso.replaceAll("-", "/");
-}
-
-const dateTimeFormat = new Intl.DateTimeFormat("en-CA", {
+const localDateTimeFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: APP_TIME_ZONE,
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
-  hour12: false,
+  hourCycle: "h23",
 });
+
+/** A moment (now by default) as Kurdistan time, "YYYY-MM-DDTHH:mm" (the datetime-local format). */
+export function toLocalDateTime(date = new Date()) {
+  const parts = Object.fromEntries(
+    localDateTimeFormat.formatToParts(date).map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/** "2026-09-30T14:05" → { day: "30", month: "9", year: "2026", time: "14:05" } */
+export function splitLocalDateTime(value: string) {
+  const [date, time = "00:00"] = value.split("T");
+  const [year, month, day] = date.split("-");
+  return { day: String(Number(day)), month: String(Number(month)), year, time };
+}
+
+/** "2026-09-30T14:05" → "2026/09/30 14:05" */
+export function formatLocalDateTime(value: string) {
+  const [date, time] = value.split("T");
+  return `${date.replaceAll("-", "/")} ${time}`;
+}
 
 /** ISO timestamp → "2026/09/30 14:05" in Kurdistan time. */
 export function formatDateTime(iso: string) {
-  const parts = Object.fromEntries(
-    dateTimeFormat.formatToParts(new Date(iso)).map((p) => [p.type, p.value]),
-  );
-  return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
+  return formatLocalDateTime(toLocalDateTime(new Date(iso)));
 }

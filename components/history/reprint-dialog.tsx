@@ -5,9 +5,9 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { reprintInvoices, reprintRange } from "@/app/actions";
-import { InvoiceSheet } from "@/components/invoice/invoice-sheet";
-import { usePrint } from "@/components/invoice/print-provider";
-import { ScaledPreview } from "@/components/invoice/scaled-preview";
+import { PaperPreview } from "@/components/invoice/paper-preview";
+import { usePrinter } from "@/components/invoice/print-provider";
+import { PrintReadyPanel } from "@/components/invoice/print-ready";
 import { IntegerInput } from "@/components/print/number-inputs";
 import { PrintSettingsFields } from "@/components/print/print-settings-fields";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { formatDateTime, parseInteger } from "@/lib/format";
 import type { InvoiceView } from "@/lib/invoice";
 import { usePrintSettings } from "@/lib/use-print-settings";
+import { useIsTouchDevice } from "@/lib/use-touch-device";
 
 export type ReprintTarget =
   | { kind: "invoices"; invoices: InvoiceView[] }
@@ -43,16 +44,39 @@ export function ReprintDialog({
   onOpenChange: (open: boolean) => void;
   onPrinted?: () => void;
 }) {
+  const printer = usePrinter();
+  const [saving, setSaving] = useState(false);
+  // Bumped to remount the dialog if a close ever gets stuck (see below).
+  const [instance, setInstance] = useState(0);
+
+  function close() {
+    printer.clear();
+    onOpenChange(false);
+  }
+
+  function handleOpenChange(next: boolean) {
+    if (next) return onOpenChange(true);
+    // Saving takes a moment; closing then would still print afterwards.
+    if (saving) return;
+    // Already closed but still on screen: remount so X and Cancel always work.
+    if (!open) setInstance((n) => n + 1);
+    close();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+    <Dialog key={instance} open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={!saving}
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl"
+      >
         {target && (
           <ReprintForm
             // Fresh form state for every target.
             key={target.kind === "range" ? "range" : target.invoices.map((i) => i.id).join()}
             target={target}
+            onSavingChange={setSaving}
             onDone={() => {
-              onOpenChange(false);
+              close();
               onPrinted?.();
             }}
           />
@@ -62,13 +86,24 @@ export function ReprintDialog({
   );
 }
 
-function ReprintForm({ target, onDone }: { target: ReprintTarget; onDone: () => void }) {
-  const print = usePrint();
+function ReprintForm({
+  target,
+  onSavingChange,
+  onDone,
+}: {
+  target: ReprintTarget;
+  onSavingChange: (saving: boolean) => void;
+  onDone: () => void;
+}) {
+  const printer = usePrinter();
+  const isTouch = useIsTouchDevice();
   const [settings, setSettings] = usePrintSettings();
   const [pending, startTransition] = useTransition();
   const [from, setFrom] = useState(target.kind === "range" && target.from ? String(target.from) : "");
   const [to, setTo] = useState(target.kind === "range" && target.to ? String(target.to) : "");
   const [error, setError] = useState<string | null>(null);
+  // Phones: reprinted invoices waiting for the user to tap "print".
+  const [readyCount, setReadyCount] = useState<number | null>(null);
 
   const invoices = target.kind === "invoices" ? target.invoices : [];
   const first = invoices[0];
@@ -84,23 +119,46 @@ function ReprintForm({ target, onDone }: { target: ReprintTarget; onDone: () => 
       rangeInput = { from: fromNo, to: toNo };
     }
 
+    onSavingChange(true);
     startTransition(async () => {
-      const result = rangeInput
-        ? await reprintRange({ ...rangeInput, settings })
-        : await reprintInvoices({ ids: invoices.map((invoice) => invoice.id), settings });
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = rangeInput
+          ? await reprintRange({ ...rangeInput, settings })
+          : await reprintInvoices({ ids: invoices.map((invoice) => invoice.id), settings });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        const printed = result.data.invoices;
+        await printer.prepare({ invoices: printed, settings });
+
+        if (isTouch) {
+          setReadyCount(printed.length);
+          return;
+        }
+        // Print while this dialog is still open (the print CSS hides it) and
+        // close it afterwards, so closing never overlaps the print dialog.
+        printer.open({ autoClear: true });
+        onDone();
+        toast.success(
+          printed.length === 1
+            ? `پسوڵەی ژمارە ${printed[0].number} نێردرا بۆ چاپ.`
+            : `${printed.length} پسوڵە نێردران بۆ چاپ.`,
+        );
+      } finally {
+        onSavingChange(false);
       }
-      const printed = result.data.invoices;
-      onDone();
-      toast.success(
-        printed.length === 1
-          ? `پسوڵەی ژمارە ${printed[0].number} نێردرا بۆ چاپ.`
-          : `${printed.length} پسوڵە نێردران بۆ چاپ.`,
-      );
-      await print({ invoices: printed, settings });
     });
+  }
+
+  if (readyCount !== null) {
+    return (
+      <PrintReadyPanel
+        title={readyCount === 1 ? "پسوڵەکە ئامادەیە بۆ چاپ" : `${readyCount} پسوڵە ئامادەن بۆ چاپ`}
+        description="دوگمەی چاپکردن دابگرە بۆ کردنەوەی پەنجەرەی چاپ."
+        onClose={onDone}
+      />
+    );
   }
 
   let title: string;
@@ -165,11 +223,7 @@ function ReprintForm({ target, onDone }: { target: ReprintTarget; onDone: () => 
             </ul>
           )}
           <div className="rounded-lg border bg-muted/50 p-2 sm:p-3">
-            <div className="overflow-hidden rounded-sm bg-white shadow-md ring-1 ring-black/5">
-              <ScaledPreview>
-                <InvoiceSheet invoice={first} />
-              </ScaledPreview>
-            </div>
+            <PaperPreview invoice={first} paperSize={settings.paperSize} className="shadow-md" />
           </div>
         </div>
       )}

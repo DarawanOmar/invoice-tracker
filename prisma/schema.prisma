@@ -11,8 +11,9 @@ datasource db {
 model Invoice {
   id            String    @id @default(cuid())
   number        Int       @unique
-  /// Null when printed as a blank template (date written by hand).
-  date          DateTime? @db.Date
+  /// Date and time written on the receipt, in Kurdistan local time (stored
+  /// as-is, without a time-zone conversion). Null for a blank template.
+  date          DateTime?
   recipientName String?
   amountIqd     Decimal?  @db.Decimal(15, 2)
   amountUsd     Decimal?  @db.Decimal(15, 2)

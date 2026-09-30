@@ -17,9 +17,9 @@ import { useEffect, useEffectEvent, useRef, useState, useTransition } from "reac
 import { toast } from "sonner";
 
 import { printNewInvoices } from "@/app/actions";
-import { InvoiceSheet } from "@/components/invoice/invoice-sheet";
-import { usePrint } from "@/components/invoice/print-provider";
-import { ScaledPreview } from "@/components/invoice/scaled-preview";
+import { PaperPreview } from "@/components/invoice/paper-preview";
+import { usePrinter } from "@/components/invoice/print-provider";
+import { PrintReadyDialog } from "@/components/invoice/print-ready";
 import { BLANK_DATA, draftToData, newDraft, type Draft } from "@/components/print/draft";
 import { InvoiceFields, type DraftErrors } from "@/components/print/invoice-fields";
 import { IntegerInput } from "@/components/print/number-inputs";
@@ -46,7 +46,9 @@ import {
   pageCount,
   type InvoiceData,
 } from "@/lib/invoice";
+import { useNow } from "@/lib/use-now";
 import { usePrintSettings } from "@/lib/use-print-settings";
+import { useIsTouchDevice } from "@/lib/use-touch-device";
 import { cn } from "@/lib/utils";
 
 type Mode = "single" | "multiple" | "range";
@@ -84,24 +86,35 @@ function AutoNumber({ first, count }: { first: number; count: number }) {
   );
 }
 
-export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; today: string }) {
+export function PrintWorkspace({
+  nextNumber,
+  serverNow,
+}: {
+  nextNumber: number;
+  /** Kurdistan time when the page was rendered, used until the clock hydrates. */
+  serverNow: string;
+}) {
   const router = useRouter();
-  const print = usePrint();
+  const printer = usePrinter();
+  const isTouch = useIsTouchDevice();
+  const now = useNow(serverNow);
   const [settings, setSettings] = usePrintSettings();
+  // Phones: saved invoices waiting for the user to tap "print".
+  const [ready, setReady] = useState<{ first: number; last: number } | null>(null);
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLDivElement>(null);
 
   const [mode, setMode] = useState<Mode>("single");
   const [errors, setErrors] = useState<Errors>({});
 
-  const [single, setSingle] = useState(() => newDraft(today));
+  const [single, setSingle] = useState(() => newDraft());
 
-  const [drafts, setDrafts] = useState(() => [newDraft(today)]);
+  const [drafts, setDrafts] = useState(() => [newDraft()]);
   const [active, setActive] = useState(0);
 
   const [rangeCountInput, setRangeCountInput] = useState(DEFAULT_RANGE_SIZE);
   const [rangeFill, setRangeFill] = useState(false);
-  const [rangeDraft, setRangeDraft] = useState(() => newDraft(today));
+  const [rangeDraft, setRangeDraft] = useState(() => newDraft());
 
   const rangeCount = parseInteger(rangeCountInput) ?? 0;
 
@@ -110,14 +123,14 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
   let previewNumber = nextNumber;
   let invoiceCount: number;
   if (mode === "single") {
-    previewData = draftToData(single);
+    previewData = draftToData(single, now);
     invoiceCount = 1;
   } else if (mode === "multiple") {
-    previewData = draftToData(drafts[active]);
+    previewData = draftToData(drafts[active], now);
     previewNumber = nextNumber + active;
     invoiceCount = drafts.length;
   } else {
-    previewData = rangeFill ? draftToData(rangeDraft) : BLANK_DATA;
+    previewData = rangeFill ? draftToData(rangeDraft, now) : BLANK_DATA;
     invoiceCount = rangeCount;
   }
 
@@ -142,8 +155,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
 
   function addDraft(copyFrom?: Draft) {
     if (drafts.length >= MAX_MULTIPLE_INVOICES) return;
-    const last = drafts[drafts.length - 1];
-    setDrafts((list) => [...list, newDraft(last?.date ?? today, copyFrom)]);
+    setDrafts((list) => [...list, newDraft(copyFrom)]);
     setActive(drafts.length);
   }
 
@@ -162,7 +174,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
       if (!single.recipientName.trim()) {
         next.drafts = { [single.key]: { recipientName: NAME_REQUIRED } };
       } else {
-        job = { mode: "SINGLE", invoices: [draftToData(single)] };
+        job = { mode: "SINGLE", invoices: [draftToData(single, now)] };
       }
     } else if (mode === "multiple") {
       const missing = drafts.filter((draft) => !draft.recipientName.trim());
@@ -172,14 +184,18 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
         );
         setActive(drafts.indexOf(missing[0]));
       } else {
-        job = { mode: "MULTIPLE", invoices: drafts.map(draftToData) };
+        job = { mode: "MULTIPLE", invoices: drafts.map((draft) => draftToData(draft, now)) };
       }
     } else if (rangeCount < 1) {
       next.rangeCount = "ژمارەیەک لە 1 بەرەو سەر بنووسە.";
     } else if (rangeCount > MAX_INVOICES_PER_PRINT) {
       next.rangeCount = `زۆرترین ژمارە بۆ یەکجار چاپکردن ${MAX_INVOICES_PER_PRINT} پسوڵەیە.`;
     } else {
-      job = { mode: "RANGE", count: rangeCount, data: rangeFill ? draftToData(rangeDraft) : BLANK_DATA };
+      job = {
+        mode: "RANGE",
+        count: rangeCount,
+        data: rangeFill ? draftToData(rangeDraft, now) : BLANK_DATA,
+      };
     }
 
     setErrors(next);
@@ -192,10 +208,10 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
   }
 
   function resetAfterPrint() {
-    setSingle(newDraft(single.date));
-    setDrafts([newDraft(today)]);
+    setSingle(newDraft());
+    setDrafts([newDraft()]);
     setActive(0);
-    setRangeDraft(newDraft(today));
+    setRangeDraft(newDraft());
   }
 
   function handlePrint() {
@@ -210,16 +226,22 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
         return;
       }
       const { invoices } = result.data;
-      const firstNo = invoices[0].number;
-      const lastNo = invoices[invoices.length - 1].number;
+      const first = invoices[0].number;
+      const last = invoices[invoices.length - 1].number;
       resetAfterPrint();
+      await printer.prepare({ invoices, settings });
+
+      if (isTouch) {
+        setReady({ first, last });
+        return;
+      }
       toast.success(
         invoices.length === 1
-          ? `پسوڵەی ژمارە ${firstNo} پاشەکەوت کرا و نێردرا بۆ چاپ.`
-          : `${invoices.length} پسوڵە (${firstNo} – ${lastNo}) پاشەکەوت کران و نێردران بۆ چاپ.`,
+          ? `پسوڵەی ژمارە ${first} پاشەکەوت کرا و نێردرا بۆ چاپ.`
+          : `${invoices.length} پسوڵە (${first} – ${last}) پاشەکەوت کران و نێردران بۆ چاپ.`,
         { action: { label: "مێژوو", onClick: () => router.push("/history") } },
       );
-      await print({ invoices, settings });
+      printer.open({ autoClear: true });
     });
   }
 
@@ -252,6 +274,19 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]">
+      <PrintReadyDialog
+        open={ready !== null}
+        title={
+          ready && ready.first !== ready.last
+            ? `پسوڵەکانی ${ready.first} – ${ready.last} پاشەکەوت کران`
+            : `پسوڵەی ژمارە ${ready?.first ?? ""} پاشەکەوت کرا`
+        }
+        description="ئێستا دوگمەی چاپکردن دابگرە بۆ کردنەوەی پەنجەرەی چاپ."
+        onClose={() => {
+          printer.clear();
+          setReady(null);
+        }}
+      />
       <Card className="gap-0 py-0">
         <Tabs
           value={mode}
@@ -283,7 +318,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
               <AutoNumber first={nextNumber} count={1} />
               <InvoiceFields
                 draft={single}
-                today={today}
+                now={now}
                 errors={errors.drafts?.[single.key]}
                 onChange={updateSingle}
               />
@@ -370,7 +405,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
                         <div className="border-t p-4">
                           <InvoiceFields
                             draft={draft}
-                            today={today}
+                            now={now}
                             errors={errors.drafts?.[draft.key]}
                             onChange={(patch) => updateDraft(index, patch)}
                           />
@@ -432,7 +467,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
               {rangeFill && (
                 <InvoiceFields
                   draft={rangeDraft}
-                  today={today}
+                  now={now}
                   requireRecipient={false}
                   onChange={(patch) => setRangeDraft((draft) => ({ ...draft, ...patch }))}
                 />
@@ -503,11 +538,7 @@ export function PrintWorkspace({ nextNumber, today }: { nextNumber: number; toda
           )}
         </div>
         <div className="rounded-xl border bg-[repeating-linear-gradient(135deg,var(--muted)_0_10px,transparent_10px_20px)] p-3 sm:p-6">
-          <div className="overflow-hidden rounded-sm bg-white shadow-lg ring-1 ring-black/5">
-            <ScaledPreview>
-              <InvoiceSheet invoice={{ number: previewNumber, ...previewData }} />
-            </ScaledPreview>
-          </div>
+          <PaperPreview invoice={{ number: previewNumber, ...previewData }} paperSize={settings.paperSize} />
         </div>
         <p className="text-xs text-muted-foreground">
           ئەوەی لێرە دەیبینیت هەمان شتە کە چاپ دەکرێت. ئەگەر ڕەنگی شریتەکە لە چاپدا دەرنەکەوت، لە پەنجەرەی چاپدا{" "}

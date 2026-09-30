@@ -12,7 +12,7 @@ import { MAX_COPIES, type PaperSize, type PrintSettings } from "@/lib/invoice";
 
 const PAPER_OPTIONS: { value: PaperSize; title: string; hint: string }[] = [
   { value: "A5", title: "A5", hint: "یەک پسوڵە لە پەڕەیەکدا" },
-  { value: "A4", title: "A4", hint: "دوو پسوڵە لە پەڕەیەکدا" },
+  { value: "A4", title: "A4", hint: "هەمان پسوڵە دوو جار لە پەڕەیەکدا" },
 ];
 
 export function PrintSettingsFields({

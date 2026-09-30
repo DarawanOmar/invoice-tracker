@@ -78,7 +78,8 @@ export async function printNewInvoices(
         const rows = await tx.invoice.createManyAndReturn({
           data: invoices.map((invoice, i) => ({
             number: first + i,
-            date: invoice.date ? new Date(`${invoice.date}T00:00:00Z`) : null,
+            // Kurdistan wall-clock time, stored without a time-zone conversion.
+            date: invoice.date ? new Date(`${invoice.date}:00Z`) : null,
             recipientName: invoice.recipientName || null,
             amountIqd: invoice.amountIqd,
             amountUsd: invoice.amountUsd,

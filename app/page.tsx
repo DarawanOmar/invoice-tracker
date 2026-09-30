@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { PageHeader } from "@/components/page-header";
 import { PrintWorkspace } from "@/components/print/print-workspace";
 import { getNextInvoiceNumber } from "@/lib/data";
-import { todayIso } from "@/lib/format";
+import { toLocalDateTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "چاپکردنی پسوڵە" };
 
@@ -18,7 +18,7 @@ export default async function PrintPage() {
         title="چاپکردنی پسوڵە"
         description="زانیارییەکان بنووسە، پێشبینینەکە بپشکنە، پاشان چاپی بکە. هەموو پسوڵەیەکی چاپکراو لە بنکەدراوەدا پاشەکەوت دەکرێت."
       />
-      <PrintWorkspace nextNumber={nextNumber} today={todayIso()} />
+      <PrintWorkspace nextNumber={nextNumber} serverNow={toLocalDateTime()} />
     </div>
   );
 }

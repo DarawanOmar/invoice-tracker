@@ -5,7 +5,10 @@ import { amountToKurdishWords } from "@/lib/kurdish-words";
 /** Form state for one invoice; amounts are kept as the raw typed digits. */
 export type Draft = {
   key: string;
+  /** "YYYY-MM-DDTHH:mm", or "" for a blank date. Ignored while `dateAuto` is on. */
   date: string;
+  /** When true, the current time is printed. */
+  dateAuto: boolean;
   recipientName: string;
   amountIqd: string;
   amountUsd: string;
@@ -19,10 +22,11 @@ export type Draft = {
 
 let keyCounter = 0;
 
-export function newDraft(date: string, copyFrom?: Draft): Draft {
+export function newDraft(copyFrom?: Draft): Draft {
   keyCounter += 1;
   return {
-    date,
+    date: "",
+    dateAuto: true,
     recipientName: "",
     amountIqd: "",
     amountUsd: "",
@@ -42,9 +46,10 @@ export function draftWords(draft: Draft) {
     : draft.amountInWords;
 }
 
-export function draftToData(draft: Draft): InvoiceData {
+/** `now` is the current Kurdistan time, used when the date is automatic. */
+export function draftToData(draft: Draft, now: string): InvoiceData {
   return {
-    date: draft.date || null,
+    date: draft.dateAuto ? now : draft.date || null,
     recipientName: draft.recipientName.trim(),
     amountIqd: parseAmount(draft.amountIqd),
     amountUsd: parseAmount(draft.amountUsd),

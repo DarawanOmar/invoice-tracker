@@ -244,6 +244,14 @@
   font-weight: 500;
 }
 
+/* The time is left-to-right text, so its gap from the year (on its right in
+   the RTL band) is set physically. */
+.inv-time {
+  display: inline-block;
+  margin-right: 3mm;
+  direction: ltr;
+}
+
 .inv-body {
   display: flex;
   flex: 1;
@@ -295,6 +303,11 @@
   font-weight: 700;
 }
 
+/* A4 page: the same receipt twice, with a cut line between them. */
+.inv-pair .inv-sheet + .inv-sheet {
+  border-top: 0.3mm dashed #9aa5ab;
+}
+
 /* ------------------------------------------------------------------ */
 /* Print output                                                        */
 /* ------------------------------------------------------------------ */
@@ -313,12 +326,15 @@
 }
 
 @media print {
+  /* Also undoes the scroll lock an open dialog puts on <body>, which would
+     otherwise cut printing off after the first page. */
   html[data-printing],
   html[data-printing] body {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 0 !important;
     height: auto !important;
+    overflow: visible !important;
     background: #fff !important;
   }
 
@@ -349,9 +365,6 @@
     height: 296.5mm;
   }
 
-  .print-page[data-size="A4"] .inv-sheet + .inv-sheet {
-    border-top: 0.3mm dashed #9aa5ab;
-  }
 }
 
 ::-webkit-scrollbar {

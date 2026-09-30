@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDateTime, formatIsoDate, formatNumber } from "@/lib/format";
+import { formatDateTime, formatLocalDateTime, formatNumber } from "@/lib/format";
 import type { InvoiceView } from "@/lib/invoice";
 
 function MoneyCell({ iqd, usd }: { iqd: number | null; usd: number | null }) {
@@ -193,7 +193,7 @@ export function InvoicesTable({ invoices, query }: { invoices: InvoiceView[]; qu
                   </TableCell>
                   <TableCell className="whitespace-nowrap tabular-nums">
                     {invoice.date ? (
-                      <span dir="ltr">{formatIsoDate(invoice.date)}</span>
+                      <span dir="ltr">{formatLocalDateTime(invoice.date)}</span>
                     ) : (
                       <span className="text-muted-foreground">بەتاڵ</span>
                     )}

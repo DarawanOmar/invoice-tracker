@@ -3,8 +3,8 @@
 import {
   createContext,
   use,
-  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -12,60 +12,85 @@ import {
 import { createPortal, flushSync } from "react-dom";
 
 import { InvoiceSheet } from "@/components/invoice/invoice-sheet";
-import { sheetsPerPage, type InvoiceContent, type PrintSettings } from "@/lib/invoice";
+import { receiptsPerPage, type InvoiceContent, type PrintSettings } from "@/lib/invoice";
 
 type PrintRequest = { invoices: InvoiceContent[]; settings: PrintSettings };
-type PrintFn = (request: PrintRequest) => Promise<void>;
 
-const PrintContext = createContext<PrintFn | null>(null);
+type Printer = {
+  /** Renders the pages into #print-root and waits until images and fonts are ready. */
+  prepare: (request: PrintRequest) => Promise<void>;
+  /**
+   * Opens the browser's print dialog for the prepared pages. On phones this
+   * must run directly inside a tap handler. With `autoClear` the pages are
+   * removed once the dialog closes (desktop browsers report that reliably).
+   */
+  open: (options?: { autoClear?: boolean }) => void;
+  /** Removes the prepared pages. */
+  clear: () => void;
+};
 
-export function usePrint() {
-  const print = use(PrintContext);
-  if (!print) throw new Error("usePrint must be used inside <PrintProvider>");
-  return print;
+const PrintContext = createContext<Printer | null>(null);
+
+export function usePrinter() {
+  const printer = use(PrintContext);
+  if (!printer) throw new Error("usePrinter must be used inside <PrintProvider>");
+  return printer;
 }
 
 const subscribeNoop = () => () => {};
 
 /**
  * Renders the sheets to print into a hidden #print-root (a direct child of
- * <body>) and opens the browser's print dialog. While printing, the print
- * CSS hides everything else on the page.
+ * <body>). While `html[data-printing]` is set, the print CSS hides everything
+ * else on the page.
  */
 export function PrintProvider({ children }: { children: React.ReactNode }) {
   const [request, setRequest] = useState<PrintRequest | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const autoClearRef = useRef(false);
   const isClient = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
-  useEffect(() => {
-    const done = () => {
+  const printer = useMemo<Printer>(() => {
+    const clear = () => {
+      autoClearRef.current = false;
       delete document.documentElement.dataset.printing;
       setRequest(null);
     };
-    window.addEventListener("afterprint", done);
-    return () => window.removeEventListener("afterprint", done);
+
+    return {
+      async prepare(next) {
+        flushSync(() => setRequest(next));
+        const root = rootRef.current;
+        if (!root) return;
+        // Force layout so web fonts and images start loading, then wait for them.
+        root.getBoundingClientRect();
+        await Promise.all(
+          Array.from(root.querySelectorAll("img"), (img) =>
+            img.complete ? undefined : img.decode().catch(() => undefined),
+          ),
+        );
+        await document.fonts.ready;
+        document.documentElement.dataset.printing = "";
+      },
+      open({ autoClear = false } = {}) {
+        autoClearRef.current = autoClear;
+        document.documentElement.dataset.printing = "";
+        window.print();
+      },
+      clear,
+    };
   }, []);
 
-  const print = useCallback<PrintFn>(async (next) => {
-    flushSync(() => setRequest(next));
-    const root = rootRef.current;
-    if (!root) return;
-
-    // Force layout so web fonts and images start loading, then wait for them.
-    root.getBoundingClientRect();
-    await Promise.all(
-      Array.from(root.querySelectorAll("img"), (img) =>
-        img.complete ? undefined : img.decode().catch(() => undefined),
-      ),
-    );
-    await document.fonts.ready;
-
-    document.documentElement.dataset.printing = "";
-    window.print();
-  }, []);
+  useEffect(() => {
+    const onAfterPrint = () => {
+      if (autoClearRef.current) printer.clear();
+    };
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, [printer]);
 
   return (
-    <PrintContext value={print}>
+    <PrintContext value={printer}>
       {children}
       {isClient &&
         createPortal(
@@ -79,22 +104,19 @@ export function PrintProvider({ children }: { children: React.ReactNode }) {
 }
 
 function PrintPages({ invoices, settings }: PrintRequest) {
-  const sheets = invoices.flatMap((invoice) =>
+  // One page per invoice copy; on A4 the same invoice is printed twice per page.
+  const pages = invoices.flatMap((invoice) =>
     Array.from({ length: settings.copies }, () => invoice),
   );
-  const perPage = sheetsPerPage(settings.paperSize);
-  const pages: InvoiceContent[][] = [];
-  for (let i = 0; i < sheets.length; i += perPage) {
-    pages.push(sheets.slice(i, i + perPage));
-  }
+  const perPage = receiptsPerPage(settings.paperSize);
   const pageSize = settings.paperSize === "A4" ? "A4 portrait" : "A5 landscape";
 
   return (
     <>
       <style>{`@page { size: ${pageSize}; margin: 0; }`}</style>
-      {pages.map((page, i) => (
-        <div key={i} className="print-page" data-size={settings.paperSize}>
-          {page.map((invoice, j) => (
+      {pages.map((invoice, i) => (
+        <div key={i} className="print-page inv-pair" data-size={settings.paperSize}>
+          {Array.from({ length: perPage }, (_, j) => (
             <InvoiceSheet key={j} invoice={invoice} />
           ))}
         </div>

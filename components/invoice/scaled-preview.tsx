@@ -4,15 +4,17 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-// 210mm × 148mm at the CSS reference of 96px per inch.
+// 210mm at the CSS reference of 96px per inch.
 const SHEET_WIDTH_PX = (210 / 25.4) * 96;
 
-/** Shrinks a full-size printed sheet to fit the width of its container. */
+/** Shrinks a full-size printed page (210mm wide) to fit its container's width. */
 export function ScaledPreview({
   children,
+  heightMm = 148,
   className,
 }: {
   children: React.ReactNode;
+  heightMm?: number;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,7 +33,8 @@ export function ScaledPreview({
   return (
     <div
       ref={containerRef}
-      className={cn("relative aspect-210/148 w-full overflow-hidden", className)}
+      className={cn("relative w-full overflow-hidden", className)}
+      style={{ aspectRatio: `210 / ${heightMm}` }}
     >
       <div
         className="absolute top-0 left-0 origin-top-left"

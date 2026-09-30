@@ -14,7 +14,7 @@ export type PrintSettings = { paperSize: PaperSize; copies: number };
 /** Everything that is printed on one receipt. */
 export type InvoiceContent = {
   number: number;
-  /** YYYY-MM-DD, or null for a blank date to fill in by hand. */
+  /** "YYYY-MM-DDTHH:mm" in Kurdistan time, or null for a blank date to fill in by hand. */
   date: string | null;
   recipientName: string;
   amountIqd: number | null;
@@ -62,8 +62,13 @@ export const PRINT_MODE_LABELS: Record<PrintMode, string> = {
 const text = (max: number) => z.string().trim().max(max);
 const money = z.number().nonnegative().max(9_999_999_999_999).nullable();
 
+const localDateTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+  .refine((value) => !Number.isNaN(Date.parse(`${value}:00Z`)));
+
 export const invoiceDataSchema = z.object({
-  date: z.iso.date().nullable(),
+  date: localDateTime.nullable(),
   recipientName: text(200),
   amountIqd: money,
   amountUsd: money,
@@ -78,10 +83,12 @@ export const printSettingsSchema = z.object({
   copies: z.number().int().min(1).max(MAX_COPIES),
 });
 
-export function sheetsPerPage(paperSize: PaperSize) {
+/** Receipts on one sheet: A5 holds one, A4 holds the same receipt twice. */
+export function receiptsPerPage(paperSize: PaperSize) {
   return paperSize === "A4" ? 2 : 1;
 }
 
+/** Sheets of paper used — one per invoice copy on either paper size. */
 export function pageCount(invoiceCount: number, settings: PrintSettings) {
-  return Math.ceil((invoiceCount * settings.copies) / sheetsPerPage(settings.paperSize));
+  return invoiceCount * settings.copies;
 }

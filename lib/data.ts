@@ -17,7 +17,8 @@ export function toInvoiceView(row: Invoice): InvoiceView {
   return {
     id: row.id,
     number: row.number,
-    date: row.date ? row.date.toISOString().slice(0, 10) : null,
+    // Stored as Kurdistan wall-clock time, so the UTC fields are read as-is.
+    date: row.date ? row.date.toISOString().slice(0, 16) : null,
     recipientName: row.recipientName ?? "",
     amountIqd: decimalToNumber(row.amountIqd),
     amountUsd: decimalToNumber(row.amountUsd),
