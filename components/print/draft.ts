@@ -18,6 +18,7 @@ export type Draft = {
   purpose: string;
   remainingIqd: string;
   remainingUsd: string;
+  note: string;
 };
 
 let keyCounter = 0;
@@ -35,6 +36,7 @@ export function newDraft(copyFrom?: Draft): Draft {
     purpose: "",
     remainingIqd: "",
     remainingUsd: "",
+    note: "",
     ...copyFrom,
     key: `draft-${keyCounter}`,
   };
@@ -57,6 +59,7 @@ export function draftToData(draft: Draft, now: string): InvoiceData {
     purpose: draft.purpose.trim(),
     remainingIqd: parseAmount(draft.remainingIqd),
     remainingUsd: parseAmount(draft.remainingUsd),
+    note: draft.note.trim(),
   };
 }
 
@@ -70,4 +73,5 @@ export const BLANK_DATA: InvoiceData = {
   purpose: "",
   remainingIqd: null,
   remainingUsd: null,
+  note: "",
 };

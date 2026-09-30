@@ -52,6 +52,8 @@
 
 /* Teal palette taken from the Digital Media Office logo. */
 :root {
+  /* Receipt drawing unit, see .inv-sheet. */
+  --mm: 1mm;
   --background: oklch(0.982 0.004 220);
   --foreground: oklch(0.22 0.02 235);
   --card: oklch(1 0 0);
@@ -105,10 +107,12 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Printed receipt — sized in millimetres for A5 landscape.            */
+/* Printed receipt — drawn for A5 landscape (210 × 148 mm) in --mm      */
+/* units: 1mm on screen; scaled to the paper when printing.            */
 /* ------------------------------------------------------------------ */
 
 .inv-sheet {
+  --pt: calc(var(--mm) * 0.35278);
   --inv-ink: #1e3a8a;
   --inv-band-from: #3aa6c1;
   --inv-band-to: #72c7da;
@@ -118,9 +122,9 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  width: 210mm;
-  height: 148mm;
-  padding: 6.5mm 9mm 5mm;
+  width: calc(210 * var(--mm));
+  height: calc(148 * var(--mm));
+  padding: calc(6.5 * var(--mm)) calc(9 * var(--mm)) calc(5 * var(--mm));
   overflow: hidden;
   background: #fff;
   color: #16232a;
@@ -130,15 +134,16 @@
   line-height: 1.4;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  break-inside: avoid;
 }
 
 .inv-header {
   position: relative;
   display: grid;
-  grid-template-columns: 30mm 1fr 42mm;
+  grid-template-columns: calc(30 * var(--mm)) 1fr calc(42 * var(--mm));
   align-items: center;
-  gap: 3mm;
-  height: 34mm;
+  gap: calc(3 * var(--mm));
+  height: calc(34 * var(--mm));
 }
 
 .inv-qr {
@@ -148,19 +153,19 @@
 }
 
 .inv-qr img {
-  width: 24mm;
-  height: 24mm;
+  width: calc(24 * var(--mm));
+  height: calc(24 * var(--mm));
   image-rendering: pixelated;
 }
 
 .inv-no {
   /* Under the QR code; the sheet is always RTL so "right" is the start. */
   position: absolute;
-  bottom: 0.5mm;
+  bottom: calc(0.5 * var(--mm));
   right: 0;
-  width: 24mm;
+  width: calc(24 * var(--mm));
   color: #d32f2f;
-  font-size: 11.5pt;
+  font-size: calc(11.5 * var(--pt));
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
@@ -173,20 +178,20 @@
 
 .inv-title h1 {
   color: #1d3037;
-  font-size: 19pt;
+  font-size: calc(19 * var(--pt));
   font-weight: 800;
   line-height: 1.35;
 }
 
 .inv-title p {
-  margin-top: 1mm;
-  font-size: 10.5pt;
+  margin-top: calc(1 * var(--mm));
+  font-size: calc(10.5 * var(--pt));
   font-weight: 500;
 }
 
 .inv-title .inv-phones {
-  margin-top: 1.2mm;
-  font-size: 15pt;
+  margin-top: calc(1.2 * var(--mm));
+  font-size: calc(15 * var(--pt));
   font-weight: 600;
   letter-spacing: 0.02em;
   direction: ltr;
@@ -198,7 +203,7 @@
 }
 
 .inv-logo img {
-  width: 36mm;
+  width: calc(36 * var(--mm));
   height: auto;
 }
 
@@ -206,34 +211,38 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4mm;
-  height: 9.5mm;
-  margin: 2mm -9mm 0;
-  padding: 0 9mm;
+  gap: calc(4 * var(--mm));
+  height: calc(9.5 * var(--mm));
+  margin: calc(2 * var(--mm)) calc(-9 * var(--mm)) 0;
+  padding: 0 calc(9 * var(--mm));
   background: linear-gradient(270deg, var(--inv-band-from), var(--inv-band-to));
-  border-bottom: 0.6mm solid var(--inv-band-edge);
+  border-bottom: calc(0.6 * var(--mm)) solid var(--inv-band-edge);
   color: #0c2a33;
 }
 
+/* One line normally; wraps to a second line rather than being cut off. */
 .inv-address {
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 6.8pt;
+  font-size: calc(6.5 * var(--pt));
   font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .inv-date {
   flex-shrink: 0;
-  font-size: 11pt;
+  font-size: calc(10.5 * var(--pt));
   font-weight: 700;
   white-space: nowrap;
 }
 
 .inv-date-value {
   display: inline-block;
-  min-width: 26mm;
-  margin-inline-start: 1.5mm;
+  min-width: calc(26 * var(--mm));
+  margin-inline-start: calc(1.5 * var(--mm));
   color: var(--inv-ink);
   text-align: center;
   unicode-bidi: isolate;
@@ -248,7 +257,7 @@
    the RTL band) is set physically. */
 .inv-time {
   display: inline-block;
-  margin-right: 3mm;
+  margin-right: calc(2.5 * var(--mm));
   direction: ltr;
 }
 
@@ -257,14 +266,14 @@
   flex: 1;
   flex-direction: column;
   justify-content: space-evenly;
-  padding: 1mm 1mm 0;
+  padding: calc(1 * var(--mm)) calc(1 * var(--mm)) 0;
 }
 
 .inv-row {
   display: flex;
   align-items: flex-end;
-  gap: 1.5mm;
-  font-size: 12.5pt;
+  gap: calc(1.5 * var(--mm));
+  font-size: calc(12.5 * var(--pt));
 }
 
 .inv-label {
@@ -275,9 +284,9 @@
 
 .inv-line {
   flex: 1;
-  min-height: 8mm;
-  padding: 0 2.5mm 0.4mm;
-  border-bottom: 0.35mm dotted #3b4a52;
+  min-height: calc(8 * var(--mm));
+  padding: 0 calc(2.5 * var(--mm)) calc(0.4 * var(--mm));
+  border-bottom: calc(0.35 * var(--mm)) dotted #3b4a52;
   color: var(--inv-ink);
   font-weight: 600;
   line-height: 1.35;
@@ -285,27 +294,27 @@
 }
 
 .inv-line.fit-1 {
-  font-size: 11pt;
+  font-size: calc(11 * var(--pt));
 }
 .inv-line.fit-2 {
-  font-size: 9.5pt;
+  font-size: calc(9.5 * var(--pt));
 }
 .inv-line.fit-3 {
-  font-size: 8.5pt;
+  font-size: calc(8.5 * var(--pt));
 }
 
 .inv-footer {
   display: flex;
   justify-content: space-between;
-  height: 19mm;
-  padding: 2mm 10mm 0;
-  font-size: 11.5pt;
+  height: calc(19 * var(--mm));
+  padding: calc(2 * var(--mm)) calc(10 * var(--mm)) 0;
+  font-size: calc(11.5 * var(--pt));
   font-weight: 700;
 }
 
 /* A4 page: the same receipt twice, with a cut line between them. */
 .inv-pair .inv-sheet + .inv-sheet {
-  border-top: 0.3mm dashed #9aa5ab;
+  border-top: calc(0.3 * var(--mm)) dashed #9aa5ab;
 }
 
 /* ------------------------------------------------------------------ */
@@ -346,25 +355,35 @@
     display: none !important;
   }
 
+  /*
+   * One printed page. 100vw × 100vh is the printable area of whatever paper
+   * the print dialog uses (it can be changed there, e.g. on phones), so the
+   * receipts scale down to fit and are never cut or split across pages.
+   * The clamp keeps a sane size if a browser reports odd viewport units.
+   */
   .print-page {
-    width: 210mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     break-after: page;
+    break-inside: avoid;
   }
 
   .print-page:last-child {
     break-after: auto;
   }
 
-  /* Slightly under the paper height so rounding never adds a blank page. */
+  /* The small extra in each divisor leaves room for rounding. */
   .print-page[data-size="A5"] {
-    height: 147.5mm;
+    --mm: clamp(0.7mm, min(100vw / 211, 100vh / 149), 1mm);
   }
 
   .print-page[data-size="A4"] {
-    height: 296.5mm;
+    --mm: clamp(0.7mm, min(100vw / 211, 100vh / 297), 1mm);
   }
-
 }
 
 ::-webkit-scrollbar {

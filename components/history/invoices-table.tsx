@@ -122,7 +122,7 @@ export function InvoicesTable({ invoices, query }: { invoices: InvoiceView[]; qu
                 </EmptyMedia>
                 <EmptyTitle>هیچ ئەنجامێک نەدۆزرایەوە</EmptyTitle>
                 <EmptyDescription>
-                  هیچ پسوڵەیەک لەگەڵ «{query}» ناگونجێت. بە ژمارەی پسوڵە، ناوی وەرگر یان «لە بڕی» بگەڕێ.
+                  هیچ پسوڵەیەک لەگەڵ «{query}» ناگونجێت. بە ژمارەی پسوڵە، ناوی وەرگر، «لە بڕی» یان تێبینی بگەڕێ.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -164,6 +164,7 @@ export function InvoicesTable({ invoices, query }: { invoices: InvoiceView[]; qu
                 <TableHead>بڕی پارە</TableHead>
                 <TableHead>لە بڕی</TableHead>
                 <TableHead>باقی حیساب</TableHead>
+                <TableHead>تێبینی</TableHead>
                 <TableHead>چاپکراوە</TableHead>
                 <TableHead>دوایین چاپ</TableHead>
                 <TableHead className="w-24 pe-4">
@@ -209,6 +210,9 @@ export function InvoicesTable({ invoices, query }: { invoices: InvoiceView[]; qu
                   </TableCell>
                   <TableCell>
                     <MoneyCell iqd={invoice.remainingIqd} usd={invoice.remainingUsd} />
+                  </TableCell>
+                  <TableCell className="max-w-48 truncate" title={invoice.note}>
+                    {invoice.note || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="tabular-nums">

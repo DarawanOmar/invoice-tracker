@@ -23,6 +23,7 @@ export type InvoiceContent = {
   purpose: string;
   remainingIqd: number | null;
   remainingUsd: number | null;
+  note: string;
 };
 
 /** Receipt content before a number is assigned (numbers come from the server). */
@@ -76,6 +77,7 @@ export const invoiceDataSchema = z.object({
   purpose: text(300),
   remainingIqd: money,
   remainingUsd: money,
+  note: text(300),
 });
 
 export const printSettingsSchema = z.object({

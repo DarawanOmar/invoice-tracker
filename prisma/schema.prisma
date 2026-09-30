@@ -21,6 +21,7 @@ model Invoice {
   purpose       String?
   remainingIqd  Decimal?  @db.Decimal(15, 2)
   remainingUsd  Decimal?  @db.Decimal(15, 2)
+  note          String?
   /// Total sheets printed for this invoice across all print jobs.
   printCount    Int       @default(0)
   lastPrintedAt DateTime?

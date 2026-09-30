@@ -74,10 +74,17 @@ export function splitLocalDateTime(value: string) {
   return { day: String(Number(day)), month: String(Number(month)), year, time };
 }
 
-/** "2026-09-30T14:05" → "2026/09/30 14:05" */
+/** "14:05" → "2:05 PM" (12-hour clock). */
+export function formatTime12(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const suffix = hours < 12 ? "AM" : "PM";
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+/** "2026-09-30T14:05" → "2026/09/30 2:05 PM" */
 export function formatLocalDateTime(value: string) {
   const [date, time] = value.split("T");
-  return `${date.replaceAll("-", "/")} ${time}`;
+  return `${date.replaceAll("-", "/")} ${formatTime12(time)}`;
 }
 
 /** ISO timestamp → "2026/09/30 14:05" in Kurdistan time. */

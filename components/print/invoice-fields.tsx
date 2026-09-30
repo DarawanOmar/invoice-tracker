@@ -16,6 +16,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   InputGroup,
   InputGroupAddon,
@@ -194,6 +195,19 @@ export function InvoiceFields({
           />
         </div>
       </FieldSet>
+
+      <Field>
+        <FieldLabel htmlFor={`${id}-note`}>تێبینی</FieldLabel>
+        <Textarea
+          id={`${id}-note`}
+          rows={2}
+          maxLength={300}
+          className="min-h-14"
+          placeholder="هەر تێبینییەک کە دەتەوێت لەسەر پسوڵەکە بنووسرێت"
+          value={draft.note}
+          onChange={(event) => onChange({ note: event.target.value })}
+        />
+      </Field>
     </FieldGroup>
   );
 }

@@ -26,6 +26,7 @@ export function toInvoiceView(row: Invoice): InvoiceView {
     purpose: row.purpose ?? "",
     remainingIqd: decimalToNumber(row.remainingIqd),
     remainingUsd: decimalToNumber(row.remainingUsd),
+    note: row.note ?? "",
     printCount: row.printCount,
     lastPrintedAt: row.lastPrintedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -94,6 +95,7 @@ export async function listInvoices({ query, page }: { query: string; page: numbe
           ...(/^\d{1,9}$/.test(q) ? [{ number: Number(q) }] : []),
           { recipientName: { contains: q, mode: "insensitive" } },
           { purpose: { contains: q, mode: "insensitive" } },
+          { note: { contains: q, mode: "insensitive" } },
         ],
       }
     : {};

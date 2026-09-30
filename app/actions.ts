@@ -87,6 +87,7 @@ export async function printNewInvoices(
             purpose: invoice.purpose || null,
             remainingIqd: invoice.remainingIqd,
             remainingUsd: invoice.remainingUsd,
+            note: invoice.note || null,
             printCount: settings.copies,
             lastPrintedAt: now,
           })),

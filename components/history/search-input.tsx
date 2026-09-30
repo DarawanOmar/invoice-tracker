@@ -48,7 +48,7 @@ export function SearchInput({ defaultValue }: { defaultValue: string }) {
       <InputGroupInput
         type="search"
         aria-label="گەڕان لە پسوڵەکان"
-        placeholder="گەڕان بە ژمارە، ناوی وەرگر یان «لە بڕی»…"
+        placeholder="گەڕان بە ژمارە، ناو، «لە بڕی» یان تێبینی…"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />

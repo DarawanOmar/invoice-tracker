@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- print output needs plain, eagerly loaded images */
 import { COMPANY } from "@/lib/company";
-import { formatMoney, splitLocalDateTime } from "@/lib/format";
+import { formatMoney, formatTime12, splitLocalDateTime } from "@/lib/format";
 import type { InvoiceContent } from "@/lib/invoice";
 
 /** Long values shrink so they stay on the dotted line. */
@@ -35,7 +35,7 @@ function PrintedDate({ date }: { date: string | null }) {
   return (
     <span className="inv-date-value" dir="rtl">
       <bdi>{day}</bdi> / <bdi>{month}</bdi> / <bdi>{year}</bdi>
-      <bdi className="inv-time">{time}</bdi>
+      <bdi className="inv-time">{formatTime12(time)}</bdi>
     </span>
   );
 }
@@ -80,6 +80,7 @@ export function InvoiceSheet({ invoice }: { invoice: InvoiceContent }) {
           label="باقی حیساب:"
           value={formatMoney(invoice.remainingIqd, invoice.remainingUsd)}
         />
+        <Row label="تێبینی:" value={invoice.note} />
       </div>
 
       <footer className="inv-footer">
