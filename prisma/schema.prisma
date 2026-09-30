@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A saved receipt. `number` is the printed "No." and is unique.
+model Invoice {
+  id            String    @id @default(cuid())
+  number        Int       @unique
+  /// Null when printed as a blank template (date written by hand).
+  date          DateTime? @db.Date
+  recipientName String?
+  amountIqd     Decimal?  @db.Decimal(15, 2)
+  amountUsd     Decimal?  @db.Decimal(15, 2)
+  amountInWords String?
+  purpose       String?
+  remainingIqd  Decimal?  @db.Decimal(15, 2)
+  remainingUsd  Decimal?  @db.Decimal(15, 2)
+  /// Total sheets printed for this invoice across all print jobs.
+  printCount    Int       @default(0)
+  lastPrintedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  printItems PrintJobItem[]
+
+  @@index([createdAt])
+}
+
+enum PrintMode {
+  SINGLE
+  MULTIPLE
+  RANGE
+  REPRINT
+}
+
+enum PaperSize {
+  A5
+  A4
+}
+
+/// One click of the print button.
+model PrintJob {
+  id           String    @id @default(cuid())
+  mode         PrintMode
+  paperSize    PaperSize @default(A5)
+  copies       Int       @default(1)
+  invoiceCount Int
+  /// Sheets sent to the printer: invoiceCount × copies.
+  totalPrints  Int
+  fromNumber   Int?
+  toNumber     Int?
+  createdAt    DateTime  @default(now())
+
+  items PrintJobItem[]
+
+  @@index([createdAt])
+}
+
+model PrintJobItem {
+  id        String @id @default(cuid())
+  jobId     String
+  invoiceId String
+
+  job     PrintJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, invoiceId])
+  @@index([invoiceId])
+}
+
+/// Highest invoice number issued so far. It never goes down, so a number is
+/// not handed out again after its invoice is deleted.
+model InvoiceCounter {
+  id         Int @id @default(1)
+  lastNumber Int
+}
